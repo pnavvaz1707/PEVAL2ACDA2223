@@ -1,13 +1,9 @@
 package peval2acda2223;
 
-import com.mysql.jdbc.exceptions.jdbc4.MySQLIntegrityConstraintViolationException;
-
 import java.io.*;
 import java.sql.*;
 import java.util.InputMismatchException;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Main {
     private static final String[] MENU_OPCIONES = new String[]{
@@ -17,237 +13,120 @@ public class Main {
             "Visualizar el número de partidos jugados en cada temporada por un jugador, diferenciando entre local y visitante",
             "Actualizar la posición de PIVOT a PIVOTE de los jugadores de la división Pacífica de la Conferencia Oeste",
             "Eliminar todos los datos de un equipo introduciendo el nombre del equipo por teclado",
-            "Salir"};
+            "Salir"}; // Opciones del menú
 
-    static Scanner teclado = new Scanner(System.in);
+    private static final Scanner teclado = new Scanner(System.in); // Escáner para poder introducir datos por teclado durante el programa entero
 
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         Class.forName("com.mysql.jdbc.Driver");
 
-        Connection conexion = DriverManager.getConnection("jdbc:mysql://localhost:3306/basketlite", "root", "");
-        Statement sentencia = conexion.createStatement();
-
-        StringBuilder sql;
-        ResultSet rs;
+        BaseDeDatos bd = new BaseDeDatos("jdbc:mysql://localhost:3306/" + Datos.DB_NAME, Datos.DB_USER, Datos.DB_PASSWORD);
 
         boolean sigue = true;
         while (sigue) {
             crearMenu();
             System.out.println("Introduce un número");
             String respuesta = teclado.next();
+            teclado.nextLine(); // Esta instrucción es para evitar que se salte alguna línea al leer por teclado en las opciones
 
             switch (respuesta) {
-                case "1":
+                case "1" -> {
                     imprimirOpcion(Integer.parseInt(respuesta));
-
                     try {
-                        File f = new File("src/peval2acda2223/resources/fichajes.txt");
+                        File f = new File(Datos.ARCHIVO_ACTUALIZAR);
 
-                        FileReader fr = new FileReader(f);
-                        BufferedReader br = new BufferedReader(fr);
-
-                        String linea;
-                        br.readLine();
-                        int codigo = 0;
-
-                        sql = new StringBuilder("SELECT MAX(CODIGO) FROM JUGADORES");
-                        rs = sentencia.executeQuery(sql.toString());
-
-                        while (rs.next()) {
-                            codigo = rs.getInt(1) + 1;
-                        }
-
-                        while ((linea = br.readLine()) != null) {
-                            try {
-                                sql = new StringBuilder();
-                                String[] datos = linea.split(";");
-                                sql.append("INSERT INTO JUGADORES VALUES (").append(codigo).append(",'");
-                                sql.append(datos[0]).append("','").append(datos[1]).append("','");
-                                sql.append(datos[2]).append("','").append(datos[3]).append("','");
-                                sql.append(datos[4]).append("','").append(datos[5]).append("')");
-                                if (!(sentencia.execute(sql.toString()))) {
-                                    Colores.imprimirVerde("Se ha ejecutado exitosamente la siguiente instrucción " + sql);
-                                }
-                                codigo++;
-                            } catch (MySQLIntegrityConstraintViolationException e) {
-                                if (e.getMessage().contains("equipo")) {
-                                    Colores.imprimirRojo("El equipo introducido no existe");
-                                } else {
-                                    Colores.imprimirRojo(e.getMessage());
-                                }
-                            }
-                        }
+                        bd.actualizarJugadores(f);
                     } catch (IOException e) {
-                        Colores.imprimirRojo("El archivo \"fichajes.txt\" no existe");
+                        Colores.imprimirRojo("El archivo no existe");
                     }
-
                     sigue = continuarMenu();
-                    break;
-
-                case "2":
+                }
+                case "2" -> {
                     imprimirOpcion(Integer.parseInt(respuesta));
-
                     try {
+                        int codigo, puntosLocal, puntosVisitantes;
+                        String equipoLocal, equipoVisitante, temporada;
 
-                        int codigo = solicitarEntero("Introduce el código");
+                        codigo = solicitarEntero("Introduce el código");
+
+                        teclado.nextLine(); // Esta instrucción es para evitar que el programa se salte la siguiente línea
 
                         System.out.println("Introduce el equipo local");
-                        String equipoLocal = teclado.next();
+                        equipoLocal = teclado.nextLine();
 
                         System.out.println("Introduce el equipo visitante");
-                        String equipoVisitante = teclado.next();
+                        equipoVisitante = teclado.nextLine();
 
-                        int puntosLocal = solicitarEntero("Introduce los puntos del local");
+                        puntosLocal = solicitarEntero("Introduce los puntos del local");
 
-                        int puntosVisitantes = solicitarEntero("Introduce los puntos del visitante");
+                        puntosVisitantes = solicitarEntero("Introduce los puntos del visitante");
 
                         System.out.println("Introduce la temporada");
-                        String temporada = teclado.next();
+                        temporada = teclado.next();
 
-                        comprobacionErrores(conexion, codigo, equipoLocal, equipoVisitante, puntosLocal, puntosVisitantes, temporada);
-
-                        sql = new StringBuilder();
-                        sql.append("INSERT INTO PARTIDOS VALUES (");
-                        sql.append(codigo).append(",'").append(equipoLocal).append("','");
-                        sql.append(equipoVisitante).append("',").append(puntosLocal);
-                        sql.append(",").append(puntosVisitantes).append(",'");
-                        sql.append(temporada).append("')");
-
-                        if (!sentencia.execute(sql.toString())) {
-                            Colores.imprimirVerde("Registro insertado");
-                        }
+                        bd.insertarPartido(codigo, equipoLocal, equipoVisitante, puntosLocal, puntosVisitantes, temporada);
 
                     } catch (Exception e) {
                         Colores.imprimirRojo(e.getMessage());
                     }
-
                     sigue = continuarMenu();
-                    break;
-
-                case "3":
+                }
+                case "3" -> {
                     imprimirOpcion(Integer.parseInt(respuesta));
-
-                    System.out.println("Introduce la ciudad");
-                    String ciudad = teclado.next();
-
-                    sql = new StringBuilder("SELECT NOMBRE,ALTURA,PESO,POSICION,NOMBRE_EQUIPO FROM JUGADORES WHERE PROCEDENCIA = '" + ciudad + "'");
-
-                    rs = sentencia.executeQuery(sql.toString());
-                    while (rs.next()) {
-                        System.out.println("Nombre: " + rs.getString(1));
-                        System.out.println("Altura: " + rs.getString(2));
-                        System.out.println("Peso: " + rs.getInt(3));
-                        System.out.println("Posición: " + rs.getString(4));
-                        System.out.println("Equipo: " + rs.getString(5));
-                        Colores.imprimirAzul("///////////////////////////////////////////");
+                    try {
+                        System.out.println("Introduce la ciudad");
+                        String ciudad = teclado.nextLine();
+                        bd.filtarPorCiudadDelEquipo(ciudad);
+                    } catch (SQLException e) {
+                        Colores.imprimirRojo("Ha habido un error al filtrar por ciudad " + e.getMessage());
                     }
-
                     sigue = continuarMenu();
-                    break;
-
-                case "4":
+                }
+                case "4" -> {
                     imprimirOpcion(Integer.parseInt(respuesta));
-
-                    teclado.nextLine();
-                    System.out.println("Introduce el nombre del jugador");
-                    String jugador = teclado.nextLine();
-
-                    sql = new StringBuilder("SELECT TEMPORADA, COUNT(*) FROM PARTIDOS WHERE EQUIPO_LOCAL = (SELECT NOMBRE_EQUIPO FROM JUGADORES WHERE NOMBRE = '" + jugador + "') GROUP BY TEMPORADA");
-                    rs = sentencia.executeQuery(sql.toString());
-                    while (rs.next()) {
-                        System.out.println("Temporada: " + rs.getString(1));
-                        System.out.println("Partidos locales: " + rs.getInt(2));
+                    try {
+                        System.out.println("Introduce el nombre del jugador");
+                        String jugador = teclado.nextLine();
+                        bd.verNumPartidos(jugador);
+                    } catch (SQLException e) {
+                        Colores.imprimirRojo("Ha habido un error al ver el número de partidos del jugador (El jugador puede estar duplicado)");
                     }
-
-                    sql = new StringBuilder("SELECT TEMPORADA, COUNT(*) FROM PARTIDOS WHERE EQUIPO_VISITANTE = (SELECT NOMBRE_EQUIPO FROM JUGADORES WHERE NOMBRE = '" + jugador + "') GROUP BY TEMPORADA");
-                    rs = sentencia.executeQuery(sql.toString());
-                    while (rs.next()) {
-                        System.out.println("Temporada: " + rs.getString(1));
-                        System.out.println("Partidos visitantes: " + rs.getInt(2));
+                    sigue = continuarMenu();
+                }
+                case "5" -> {
+                    imprimirOpcion(Integer.parseInt(respuesta));
+                    try {
+                        bd.actualizarAPivote();
+                    } catch (SQLException e) {
+                        Colores.imprimirRojo("Ha habido un error al ver el actualizar la posición pivot a pivote");
                     }
-
                     sigue = continuarMenu();
-                    break;
-
-                case "5":
+                }
+                case "6" -> {
                     imprimirOpcion(Integer.parseInt(respuesta));
-
-                    sql = new StringBuilder("UPDATE JUGADORES SET POSICION = 'PIVOTE' WHERE POSICION = 'PIVOT' AND NOMBRE IN (" +
-                            "SELECT NOMBRE FROM JUGADORES WHERE NOMBRE_EQUIPO IN (" +
-                            "SELECT NOMBRE FROM EQUIPOS WHERE DIVISION ='PACIFIC' AND CONFERENCIA ='WEST'))");
-
-                    sentencia.execute(sql.toString());
-                    Colores.imprimirVerde("Se ha modificado " + sentencia.getUpdateCount() + " registro(s)");
-
-                    sigue = continuarMenu();
-                    break;
-
-                case "6":
-                    imprimirOpcion(Integer.parseInt(respuesta));
-
                     System.out.println("Introduce el nombre del equipo que quieras eliminar");
-                    String equipo = teclado.next();
-
-                    sql = new StringBuilder("DELETE FROM EQUIPOS WHERE NOMBRE = '" + equipo + "'");
-
-                    if (!sentencia.execute(sql.toString())) {
-                        Colores.imprimirVerde("Eliminación completada");
+                    String equipo = teclado.nextLine();
+                    try {
+                        bd.borrarEquipo(equipo);
+                    } catch (SQLException e) {
+                        Colores.imprimirRojo("Ha habido un error al eliminar los registros relacionados con el equipo indicado");
                     }
-
                     sigue = continuarMenu();
-                    break;
-
-                case "0":
+                }
+                case "0" -> {
                     Colores.imprimirVerde("Has salido del programa con éxito");
                     sigue = false;
-                    break;
-
-                default:
-                    Colores.imprimirRojo("Debes introducir el número asociado a una de las opciones presentadas");
-                    break;
+                }
+                default -> Colores.imprimirRojo("Debes introducir el número asociado a una de las opciones presentadas");
             }
         }
     }
 
-    private static void comprobacionErrores(Connection conexion, int codigo, String equipoLocal, String equipoVisitante, int puntosLocal, int puntosVisitantes, String temporada) throws Exception {
-
-        if (equipoLocal.equalsIgnoreCase(equipoVisitante)) {
-            throw new Exception("Debes introducir dos equipos distintos");
-        }
-
-        if (puntosLocal < 0 || puntosVisitantes < 0) {
-            throw new Exception("Los puntos no pueden ser menores que 0");
-        }
-
-        if (codigo <= 0) {
-            throw new Exception("El código debe ser mayor que 0");
-        }
-
-        Pattern pattern = Pattern.compile("\\d\\d/\\d\\d");
-        Matcher matcher = pattern.matcher(temporada);
-
-        if (!matcher.matches()) {
-            throw new Exception("La temporada debe cumplir el siguiente formato (YY/YY) donde 'Y' equivale al año");
-        }
-
-        String sqlComprobacion = "SELECT CODIGO FROM JUGADORES WHERE CODIGO = " + codigo;
-        Statement sentenciaComprobacion = conexion.createStatement();
-
-        if (sentenciaComprobacion.executeQuery(sqlComprobacion).next()) {
-            throw new Exception("El código introducido ya existe");
-        }
-
-        sqlComprobacion = "SELECT NOMBRE FROM EQUIPOS WHERE NOMBRE = '" + equipoLocal + "'";
-        if (!sentenciaComprobacion.executeQuery(sqlComprobacion).next()) {
-            throw new Exception("El equipo local no existe");
-        }
-
-        sqlComprobacion = "SELECT NOMBRE FROM EQUIPOS WHERE NOMBRE = '" + equipoVisitante + "'";
-        if (!sentenciaComprobacion.executeQuery(sqlComprobacion).next()) {
-            throw new Exception("El equipo visitante no existe");
-        }
-    }
-
+    /**
+     * Método para preguntar al usuario si desea continuar el programa
+     *
+     * @return (Booleano de valor true si quiere seguir con el programa o false si quiere terminar el programa)
+     */
     private static boolean continuarMenu() {
         boolean continuar = true;
         boolean sigue = true;
@@ -267,10 +146,18 @@ public class Main {
         return continuar;
     }
 
+    /**
+     * Método para imprimir la opción seleccionada de color azul
+     *
+     * @param eleccion (Número que indica la posición de la opción en el array estático MENU_OPCIONES)
+     */
     private static void imprimirOpcion(int eleccion) {
         Colores.imprimirAzul("Has seleccionado la opción: " + MENU_OPCIONES[eleccion - 1]);
     }
 
+    /**
+     * Método para crear el menú
+     */
     private static void crearMenu() {
         for (int i = 0; i < MENU_OPCIONES.length - 1; i++) {
             Colores.imprimirAzul((i + 1) + ". " + MENU_OPCIONES[i]);
@@ -278,6 +165,12 @@ public class Main {
         Colores.imprimirRojo("0. " + MENU_OPCIONES[MENU_OPCIONES.length - 1]);
     }
 
+    /**
+     * Método para pedir un dato de tipo entero constantemente hasta que no se equivoque de tipo
+     *
+     * @param msg (Mensaje que se le envía al usuario para pedirle que introduzca el dato)
+     * @return (El número entero solicitado)
+     */
     private static int solicitarEntero(String msg) {
         int num = 0;
         boolean sigue = true;
@@ -289,9 +182,9 @@ public class Main {
                 sigue = false;
             } catch (InputMismatchException e) {
                 Colores.imprimirRojo("Debes introducir un número entero");
+                teclado.nextLine(); // Sin esta instrucción el programa no leería el siguiente número y entraría en bucle infinito
             }
         }
         return num;
     }
-
 }

@@ -1,5 +1,8 @@
 package peval2acda2223;
 
+/**
+ * Clase para almacenar cadenas que definen distintos colores y métodos para imprimir de distintos colores
+ */
 public class Colores {
     //Declaramos variables para usar imprimir textos de distintos colores
     public static final String ANSI_BLACK = "\u001B[30m";
@@ -12,14 +15,29 @@ public class Colores {
     public static final String ANSI_WHITE = "\u001B[37m";
     public static final String ANSI_RESET = "\u001B[0m";
 
+    /**
+     * Método para imprimir de color rojo un mensaje enviado como parámetro
+     *
+     * @param msg (Texto a imprimir)
+     */
     public static void imprimirRojo(String msg) {
         System.out.println(ANSI_RED + msg + ANSI_RESET);
     }
 
+    /**
+     * Método para imprimir de color azul un mensaje enviado como parámetro
+     *
+     * @param msg (Texto a imprimir)
+     */
     public static void imprimirAzul(String msg) {
         System.out.println(ANSI_BLUE + msg + ANSI_RESET);
     }
 
+    /**
+     * Método para imprimir de color verde un mensaje enviado como parámetro
+     *
+     * @param msg (Texto a imprimir)
+     */
     public static void imprimirVerde(String msg) {
         System.out.println(ANSI_GREEN + msg + ANSI_RESET);
     }
